@@ -1,0 +1,42 @@
+= docToolchain example with AsciiDoctor, Gradle, HTML5 and Confluence
+
+An example project that demonstrates how to use docToolchain with the Asciidoctor Gradle plugin.
+Converts AsciiDoc to HTML5 using the Asciidoctor Gradle plugin and uploads the content to Confluence using docToolchain.
+
+The AsciiDoc and AsciiDoctor content is based on the https://github.com/asciidoctor/asciidoctor-gradle-examples/tree/master/asciidoc-to-html-example[asciiDoctor-to-html-example] project.
+
+docToolchain https://doctoolchain.github.io/docToolchain/[documentation] and https://github.com/docToolchain/docToolchain[sources] can be found on GitHub.
+
+== Convert AsciiDoc to HTML5
+
+Convert the AsciiDoc to HTML5 by invoking the 'asciidoctor' goal:
+
+  $ ./gradlew asciidoctor
+
+Open the file _build/asciidoc/html/example-manual.html_  in your browser to see the generated HTML file.
+
+
+== Publish to Confluence with DocToolchain
+
+Publish the generated HTML5 content to Confluence using https://doctoolchain.github.io/docToolchain[docToolchain].
+
+=== Prerequisite
+* https://github.com/docToolchain/docToolchain/releases[docToolchain v1.1.0] is available on the system path.
+* Update Confluence configuration in link:PublishToConfluenceConfig.groovy[PublishToConfluenceConfig.groovy], set:
+** `confluence.api`
+** `confluence.spaceKey`
+** `ancestorId` of the `confluence.input` map, can be found by:
+*** Confluence API: `https://[server]/[context]/rest/api/search3/1.0/search?queryString=MyParentPage`
+*** Confluence UI: by editing the parent page, the page id is part of the edit URL
+* Provided Confluence API credentials by either setting:
+** `confluence.credentials` in link:PublishToConfluenceConfig.groovy[PublishToConfluenceConfig.groovy] or
+** environment variables `CONFLUENCE_CREDENTIALS_USR` and `CONFLUENCE_CREDENTIALS_PSW` or by
+** https://jenkins.io/doc/book/pipeline/jenkinsfile/#usernames-and-passwords[Jenkins credentials] with ID `credentials-confluence-api-publish`
+
+=== Publish
+
+  $ doctoolchain . publishToConfluence -PmainConfigFile=PublishToConfluenceConfig.groovy --no-daemon
+
+=== Caveats
+
+See link:README_Caveats.adoc[known caveats] for this setup.

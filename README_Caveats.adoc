@@ -1,0 +1,97 @@
+== Known Caveats
+This solution incorporate a number of tools:
+
+* docToolchain
+* AsciiDoctor & AsciiDoc
+* Gradle & Groovy & Java
+* Jenkins
+
+This a list of items I ran into when working with this particular setup.
+
+=== No deletes on Confluence
+docToolchain adds and updates Confluence pages, it will not delete a page on Confluence. +
+Deleting a page in the sources won't result in a deletion of the Confluence page. +
+Renaming a page after publishing it to Confluence will result in two separate Confluence pages, it will not delete the renamed page.
+
+Solution: Cleaning up a Confluence space must be handled separately.
+
+=== Page comments on Confluence
+Confluence inline page comments will be deleted once the page is updated. +
+A Confluence page will not be updated by docToolchain if there are no changes. +
+Confluence page comments (at the bottom of a page) will be preserved if a page is updated.
+
+* See: https://github.com/docToolchain/docToolchain/issues/28
+
+=== Document title and sections
+An https://asciidoctor.org/docs/asciidoc-syntax-quick-reference/#section-titles[AsciiDoc Level 1 section] (`== Section Level 1`)
+is the start of a new Confluence page. +
+Document titles (`= Document title`) and its subscript are not included in the publication to Confluence.
+
+=== Notification: "WARNING: An illegal reflective access operation has occurred"
+When using JDK 9 or higher, docToolchain outputs the following:
+```text
+WARNING: An illegal reflective access operation has occurred
+WARNING: Illegal reflective access by org.codehaus.groovy.reflection.CachedClass (file:/home/<user-name>/.gradle/wrapper/dists/gradle-4.3.1-bin/7yzdu24db77gi3zukl2a7o0xx/gradle-4.3.1/lib/groovy-all-2.4.12.jar) to method java.lang.Object.finalize()
+WARNING: Please consider reporting this to the maintainers of org.codehaus.groovy.reflection.CachedClass
+```
+Cause: The notification is from Groovy, it will also appear when executing: +
+`<docToolchain-dir># gradlew --version` +
+Groovy tries to retrieves the JDK version from a Java class that is no longer public in Java 9.
+
+ * See: https://issues.apache.org/jira/browse/GROOVY-8339
+ * More discussions in:
+ ** https://github.com/gradle/gradle/issues/3118
+ ** https://github.com/gradle/gradle/issues/2995
+
+Solution: use JDK 8
+
+=== Notification: "Problems handling incoming cache access requests"
+When using an embedded Linux on a Windows system, the final output can be:
+```text
+...
+BUILD SUCCESSFUL in 9s
+1 actionable task: 1 executed
+Problems handling incoming cache access requests.
+java.lang.IllegalArgumentException: Unexpected protocol version 0 received in lock contention notification message
+        at org.gradle.cache.internal.locklistener.FileLockCommunicator.decode(FileLockCommunicator.java:131)
+        at org.gradle.cache.internal.locklistener.FileLockCommunicator.decodeLockId(FileLockCommunicator.java:91)
+        at org.gradle.cache.internal.locklistener.DefaultFileLockContentionHandler$1.doRun(DefaultFileLockContentionHandler.java:109)
+        at org.gradle.cache.internal.locklistener.DefaultFileLockContentionHandler$1.run(DefaultFileLockContentionHandler.java:94)
+        at org.gradle.internal.concurrent.ExecutorPolicy$CatchAndRecordFailures.onExecute(ExecutorPolicy.java:63)
+        at org.gradle.internal.concurrent.ManagedExecutorImpl$1.run(ManagedExecutorImpl.java:46)
+        at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1149)
+        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624)
+        at org.gradle.internal.concurrent.ThreadFactoryImpl$ManagedThreadRunnable.run(ThreadFactoryImpl.java:55)
+        at java.lang.Thread.run(Thread.java:748)
+```
+Cause: The locking mechanism is not fully (read: properly) implemented in the Windows WSL.
+
+ * See: https://github.com/Microsoft/WSL/issues/1712
+
+Solution: No action required, ignore notification.
+
+=== Unique page title
+A page title must be unique within a Confluence space, otherwise docToolchain will output:
+```text
+FAILURE: Build failed with an exception.
+
+* Where:
+Script '/mnt/d/repos/personal-repos/docToolchain-1.1.0/scripts/publishToConfluence.gradle' line: 24
+
+* What went wrong:
+Execution failed for task ':publishToConfluence'.
+> Cannot create page, page with the same title=Example Manual with id=36767677 already exists in the space. A Confluence page title must be unique within a space, consider specifying a 'confluencePagePrefix' in ConfluenceConfig.groovy
+```
+
+==== Special character in page title
+The <<Unique page title>> notification will also appear when using special Lucene characters, in combination with spaces in a page title or page pre-fix (Lucine is Confluence's underlying data store).
+
+Cause: As a result of the flawed search functionality of Confluence, existing pages with special characters can't be found, so instead of updating an existing page, an attempt is made to publish the same page again.
+
+Lucene special characters are: `+ - && || ! ( ) { } [ ] ^ " ~ * ? : \ /`
+
+ * See: https://github.com/docToolchain/docToolchain/issues/146
+ * Open issues of the various Atlassian components:
+ ** https://jira.atlassian.com/browse/CONFCLOUD-52615
+ ** https://jira.atlassian.com/browse/JRASERVER-66244
+ ** https://jira.atlassian.com/browse/CONFSERVER-55559
